@@ -1,7 +1,7 @@
 import './globals.css';
 
 export const metadata = {
-  title: 'Nigel’s SplitSmart',
+  title: 'Splitly',
   description: 'Split expenses with your group — the easy way.',
 };
 

@@ -1,11 +1,14 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
 :root {
-  --blue: #1C5FD4;
+  --blue: #5865F2; /* Discord blurple */
   --cyan: #26C6FF;
-  --ink: #0d1b3e;
-  --muted: #6b7694;
-  --line: #e7ecf5;
-  --bg: #eef2f9;
-  --card: #ffffff;
+  --ink: #f2f3f5; /* Discord crisp white/light text */
+  --muted: #949ba4; /* Discord subtle secondary text */
+  --line: #383a40; /* Discord clean border */
+  --bg: #1e1f22; /* Discord dark background */
+  --card: #2b2d31; /* Discord container gray */
+  --surface: #313338; /* Discord item & input background */
 }
 
 * { box-sizing: border-box; }
@@ -15,8 +18,9 @@ html, body {
   padding: 0;
   background: var(--bg);
   color: var(--ink);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 button { font-family: inherit; cursor: pointer; }

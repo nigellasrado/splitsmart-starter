@@ -124,7 +124,8 @@ Return ONLY a strict JSON object with keys: "amount", "people", "each", "descrip
       else if (lower.includes('cab') || lower.includes('taxi') || lower.includes('uber')) description = 'cab';
       else if (lower.includes('coffee') || lower.includes('tea') || lower.includes('chai')) description = 'coffee';
       else if (lower.includes('lunch')) description = 'lunch';
-      else if (lower.includes('pizza') || lower.includes('burger')) description = 'food';
+      else if (lower.includes('pizza')) description = 'pizza';
+      else if (lower.includes('burger')) description = 'burger';
       else if (lower.includes('grocer')) description = 'groceries';
       else {
         description = sentence

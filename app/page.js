@@ -9,11 +9,18 @@ const groupSelectionKey = 'splitsmart.selected-group';
 
 function getEmoji(description = '') {
   const text = String(description).toLowerCase();
-  if (text.includes('dinner') || text.includes('lunch') || text.includes('food')) return '🍽️';
-  if (text.includes('pizza') || text.includes('burger') || text.includes('meal')) return '🍽️';
-  if (text.includes('cab') || text.includes('taxi') || text.includes('uber')) return '🚕';
-  if (text.includes('coffee') || text.includes('tea') || text.includes('chai')) return '☕';
-  if (text.includes('grocer') || text.includes('market')) return '🛒';
+  if (/grocer|vegetable|supermarket|market/.test(text)) return '🛒';
+  if (/movie|cinema|ticket/.test(text)) return '🎬';
+  if (/dinner|lunch|breakfast|food|pizza|burger|meal|restaurant/.test(text)) return '🍽️';
+  if (/cab|taxi|uber|ola/.test(text)) return '🚕';
+  if (/coffee|tea|chai/.test(text)) return '☕';
+  if (/electric|power/.test(text)) return '💡';
+  if (/internet|wifi|broadband/.test(text)) return '📶';
+  if (/rent|house|flat|room/.test(text)) return '🏠';
+  if (/shopping|clothes|clothing|shoes/.test(text)) return '🛍️';
+  if (/fuel|petrol|diesel/.test(text)) return '⛽';
+  if (/medicine|medical|hospital/.test(text)) return '💊';
+  if (/flight|airport|train|travel/.test(text)) return '✈️';
   return '🧾';
 }
 

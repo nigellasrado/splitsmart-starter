@@ -1,5 +1,84 @@
 import { NextResponse } from 'next/server';
 
+function parseExpenseLocally(sentence) {
+  const lower = sentence.toLowerCase();
+  const numbers = [...sentence.matchAll(/(?:₹|rs\.?|inr)?\s*(\d[\d,]*(?:\.\d+)?)/gi)]
+    .map((match) => Number(match[1].replace(/,/g, '')))
+    .filter(Number.isFinite);
+
+  const explicitAmount = lower.match(/(?:₹|rs\.?|inr)\s*(\d[\d,]*(?:\.\d+)?)|(?:for|cost(?:s)?|amount|total|of)\s+(₹|rs\.?|inr)?\s*(\d[\d,]*(?:\.\d+)?)/i);
+  const amount = explicitAmount
+    ? Number((explicitAmount[1] || explicitAmount[3] || 0).toString().replace(/,/g, ''))
+    : Math.max(...numbers.filter((number) => number > 10), 0);
+
+  let people = 1;
+  const ofUs = lower.match(/(\d+)\s+(?:of\s+us|people(?:\s+(?:including|with))?\s+me)/i);
+  const includingMe = lower.match(/(\d+)\s+(?:others?|friends?|people|persons?)\s+(?:including|with)\s+me/i);
+  const splitWithFriends = lower.match(/(?:split|shared?)\s+with\s+(\d+)\s+(?:friends?|people|persons?|others?)?/i);
+  const splitWithShort = lower.match(/(\d+)\s+(?:friends?|people|persons?)\s+(?:split|sharing)/i);
+  const splitWays = lower.match(/(?:split|divided?)\s+(?:equally\s+)?(?:by|between|among|across|\/)\s*(\d+)/i);
+  const nWays = lower.match(/(?:split|divided?|shared?)\s+(?:equally\s+)?(\d+)\s*ways?/i);
+  const totalPeople = lower.match(/(?:for|between|among)\s+(\d+)\s+(?:people|persons?|friends?|pax|heads)\s*(?:including\s+me)?/i);
+  const splitBetweenNumber = lower.match(/(?:split|divided?|shared?)\s+(?:equally\s+)?(?:between|among)\s+(\d+)(?:\s+(?:people|persons?|friends?|pax|heads))?/i);
+  const standaloneBetweenNumber = lower.match(/\b(?:between|among)\s+(\d+)(?:\s+(?:people|persons?|friends?|pax|heads))?(?:\s|$)/i);
+  const namedPeople = lower.match(/(?:^|[:;,])\s*(?:me|i)\s*(?:,|\band\b)\s*(.+?)\s+(?:had|paid|spent)\b/i);
+  const solo = /\b(just me|only me|solo|for myself|myself only)\b/i.test(lower);
+
+  if (solo) people = 1;
+  else if (ofUs) people = Number(ofUs[1]);
+  else if (includingMe) people = Number(includingMe[1]) + 1;
+  else if (splitWithFriends) people = Number(splitWithFriends[1]) + (lower.includes('friends') || lower.includes('people') || lower.includes('others') ? 1 : 0);
+  else if (splitWithShort) people = Number(splitWithShort[1]) + 1;
+  else if (splitWays) people = Number(splitWays[1]);
+  else if (nWays) people = Number(nWays[1]);
+  else if (totalPeople) people = Number(totalPeople[1]);
+  else if (splitBetweenNumber) people = Number(splitBetweenNumber[1]);
+  else if (standaloneBetweenNumber) people = Number(standaloneBetweenNumber[1]);
+  else if (namedPeople) {
+    const names = namedPeople[1].split(/\s*,\s*|\s+and\s+/i).filter((name) => name.trim());
+    people = names.length + 1;
+  }
+
+  people = Math.max(1, people);
+
+  let description = 'expense';
+  const knownItems = [
+    ['movie tickets', 'movie tickets'], ['movie ticket', 'movie ticket'], ['movie', 'movie'],
+    ['groceries', 'groceries'], ['grocery', 'groceries'], ['vegetables', 'vegetables'],
+    ['electricity', 'electricity'], ['internet', 'internet'], ['wifi', 'wifi'], ['rent', 'rent'],
+    ['dinner', 'dinner'], ['lunch', 'lunch'], ['breakfast', 'breakfast'], ['pizza', 'pizza'],
+    ['burger', 'burger'], ['coffee', 'coffee'], ['tea', 'tea'], ['chai', 'chai'],
+    ['cab', 'cab'], ['taxi', 'taxi'], ['uber', 'uber'], ['shopping', 'shopping'],
+    ['fuel', 'fuel'], ['petrol', 'petrol'], ['medicine', 'medicine'],
+  ];
+  for (const [phrase, title] of knownItems) {
+    if (lower.includes(phrase)) {
+      description = title;
+      break;
+    }
+  }
+
+  if (description === 'expense') {
+    const cleaned = sentence
+      .replace(/(?:₹|rs\.?|inr)\s*/gi, '')
+      .replace(/\b\d[\d,]*(?:\.\d+)?\b/g, '')
+      .replace(/\b(?:split|sharing|shared|equally|between|among|across|with|people|persons?|friends?|others?|ways?|including|pax|heads|of|us|me|and|for|to|paid|cost|costs|amount|total|by|just|only|myself|solo)\b/gi, ' ')
+      .replace(/[^\p{L}\p{N}\s-]/gu, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    description = cleaned.toLower || 'expense';
+    description = description.toLowerCase();
+  }
+
+  return {
+    amount,
+    people,
+    each: people > 0 ? Number((amount / people).toFixed(2)) : amount,
+    description,
+    confidence: amount > 0 && description !== 'expense' ? 1 : 0,
+  };
+}
+
 export async function POST(request) {
   try {
     const body = await request.json();
@@ -54,6 +133,15 @@ Now analyze this sentence:
 Return ONLY a strict JSON object with keys: "amount", "people", "each", "description". No markdown, no fences, no extra text.`;
 
     let parsed = null;
+    const localParsed = parseExpenseLocally(sentence);
+    if (localParsed.confidence) {
+      return NextResponse.json({
+        amount: localParsed.amount,
+        people: localParsed.people,
+        each: localParsed.each,
+        description: localParsed.description,
+      });
+    }
 
     try {
       const controller = new AbortController();

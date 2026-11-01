@@ -9,18 +9,33 @@ const groupSelectionKey = 'splitsmart.selected-group';
 
 function getEmoji(description = '') {
   const text = String(description).toLowerCase();
+  if (/mobile|phone|iphone|smartphone/.test(text)) return '📱';
+  if (/laptop|computer|desktop|tablet|electronics|electronic/.test(text)) return '💻';
   if (/grocer|vegetable|supermarket|market/.test(text)) return '🛒';
-  if (/movie|cinema|ticket/.test(text)) return '🎬';
+  if (/flight|airport|airline|airplane/.test(text)) return '✈️';
+  if (/train|railway|metro/.test(text)) return '🚆';
+  if (/bus/.test(text)) return '🚌';
+  if (/movie|cinema/.test(text)) return '🎬';
+  if (/ticket/.test(text)) return '🎟️';
   if (/dinner|lunch|breakfast|food|pizza|burger|meal|restaurant/.test(text)) return '🍽️';
   if (/cab|taxi|uber|ola/.test(text)) return '🚕';
   if (/coffee|tea|chai/.test(text)) return '☕';
   if (/electric|power/.test(text)) return '💡';
   if (/internet|wifi|broadband/.test(text)) return '📶';
+  if (/water|utility|bill/.test(text)) return '🧾';
   if (/rent|house|flat|room/.test(text)) return '🏠';
   if (/shopping|clothes|clothing|shoes/.test(text)) return '🛍️';
   if (/fuel|petrol|diesel/.test(text)) return '⛽';
   if (/medicine|medical|hospital/.test(text)) return '💊';
-  if (/flight|airport|train|travel/.test(text)) return '✈️';
+  if (/doctor|dentist|health|pharmacy/.test(text)) return '🏥';
+  if (/travel/.test(text)) return '✈️';
+  if (/hotel|hostel|stay|accommodation/.test(text)) return '🏨';
+  if (/book|stationery|education|course|school/.test(text)) return '📚';
+  if (/netflix|spotify|subscription|streaming/.test(text)) return '🎬';
+  if (/gym|fitness|sports|yoga/.test(text)) return '🏋️';
+  if (/gift|birthday|celebration/.test(text)) return '🎁';
+  if (/pet|dog|cat|vet/.test(text)) return '🐾';
+  if (/repair|maintenance/.test(text)) return '🔧';
   return '🧾';
 }
 

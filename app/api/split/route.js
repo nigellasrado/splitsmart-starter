@@ -1,56 +1,72 @@
-import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server.js';
 
-function parseExpenseLocally(sentence) {
+export function parseExpenseLocally(sentence) {
   const lower = sentence.toLowerCase();
-  const numbers = [...sentence.matchAll(/(?:₹|rs\.?|inr)?\s*(\d[\d,]*(?:\.\d+)?)/gi)]
-    .map((match) => Number(match[1].replace(/,/g, '')))
-    .filter(Number.isFinite);
-
+  const wordNumbers = {
+    one: 1, two: 2, three: 3, four: 4, five: 5, six: 6,
+    seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12,
+  };
+  const numberFromText = (value) => wordNumbers[value?.toLowerCase()] ?? Number(value);
   const currencyAmount = lower.match(/(?:₹|rs\.?|inr)\s*(\d[\d,]*(?:\.\d+)?)/i);
-  const forAmount = lower.match(/(?:for|cost(?:s)?|amount|total)\s+(?:₹|rs\.?|inr)?\s*(\d[\d,]*(?:\.\d+)?)/i);
+  const forAmount = lower.match(/\b(?:for|cost(?:s)?|amount|total)\s+(?:₹|rs\.?|inr)?\s*(\d[\d,]*(?:\.\d+)?)/i);
   let amount = 0;
-  const rupeeNumber = sentence.match(/₹\s*([\d,]+(?:\.\d+)?)/);
-  if (rupeeNumber?.[1]) {
-    amount = Number(rupeeNumber[1].replace(/,/g, ''));
-  } else if (/(?:₹|rs\.?|inr)/i.test(lower)) {
-    amount = Math.max(...numbers.filter((number) => number > 10), 0);
-  } else if (currencyAmount?.[1]) {
+  if (currencyAmount?.[1]) {
     amount = Number(currencyAmount[1].replace(/,/g, ''));
   } else if (forAmount?.[1] && !/^(₹|rs|inr)/i.test(lower.trim())) {
     amount = Number(forAmount[1].replace(/,/g, ''));
   } else {
-    amount = Math.max(...numbers.filter((number) => number > 10), 0);
+    const wordAmount = lower.match(/\b(?:for|cost(?:s)?|amount|total)\s+(one|two|three|four|five|six|seven|eight|nine|ten)\s+hundred\b/i)
+      || lower.match(/\b(one|two|three|four|five|six|seven|eight|nine|ten)\s+hundred\b/i);
+    const allNumbers = [...sentence.matchAll(/(\d[\d,]*(?:\.\d+)?)/g)];
+    const amountCandidates = allNumbers
+      .filter((match) => {
+        const after = lower.slice(match.index + match[0].length);
+        const before = lower.slice(0, match.index);
+        return !/^\s+(?:people|persons|friends|others|ways|pax|heads)\b/i.test(after)
+          && !/\b(?:people|persons|friends|others|ways|pax|heads)\s+$/.test(before);
+      })
+      .map((match) => Number(match[1].replace(/,/g, '')))
+      .filter(Number.isFinite);
+    amount = wordAmount
+      ? numberFromText(wordAmount[1]) * 100
+      : amountCandidates.reduce((largest, number) => Math.max(largest, number), 0);
   }
 
   let people = 1;
-  const ofUs = lower.match(/(\d+)\s+(?:of\s+us|people(?:\s+(?:including|with))?\s+me)/i);
-  const peopleIncludingMe = lower.match(/(\d+)\s+people\s+(?:including|with)\s+me/i);
-  const includingMe = lower.match(/(\d+)\s+(?:others?|friends?|people|persons?)\s+(?:including|with)\s+me/i);
-  const splitWithFriends = lower.match(/(?:split|shared?)\s+with\s+(\d+)\s+(?:friends?|people|persons?|others?)?/i);
-  const splitWithShort = lower.match(/(\d+)\s+(?:friends?|people|persons?)\s+(?:split|sharing)/i);
-  const splitWays = lower.match(/(?:split|divided?)\s+(?:equally\s+)?(?:by|between|among|across|\/)\s*(\d+)/i);
-  const nWays = lower.match(/(?:split|divided?|shared?)\s+(?:equally\s+)?(\d+)\s*ways?/i);
-  const totalPeople = lower.match(/(?:for|between|among)\s+(\d+)\s+(?:people|persons?|friends?|pax|heads)\s*(?:including\s+me)?/i);
-  const splitBetweenNumber = lower.match(/(?:split|divided?|shared?)\s+(?:equally\s+)?(?:between|among)\s+(\d+)(?:\s+(?:people|persons?|friends?|pax|heads))?/i);
-  const standaloneBetweenNumber = lower.match(/\b(?:between|among)\s+(\d+)(?:\s+(?:people|persons?|friends?|pax|heads))?(?:\s|$)/i);
-  const splitEvenlyCount = lower.match(/(?:split|divide|divided|shared?)\s+(?:equally\s+|evenly\s+)?(?:by\s+|between\s+|among\s+)?(\d+)(?:\s+(?:people|persons?|friends?|ways?|pax|heads))?/i);
-  const countBeforeSplit = lower.match(/^(\d+)\s+(?:people|persons?|friends?|pax|heads)\b/i);
+  const count = '\\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve';
+  const othersIncludingMe = lower.match(new RegExp(`(${count})\\s+(?:others?)\\s+(?:including|with)\\s+me`, 'i'));
+  const friendsIncludingMe = lower.match(new RegExp(`(${count})\\s+(?:friends?)\\s+(?:including|with)\\s+me`, 'i'));
+  const peopleIncludingMe = lower.match(new RegExp(`(${count})\\s+(?:people|persons?)\\s+(?:including|with)\\s+me`, 'i'));
+  const ofUs = lower.match(new RegExp(`(${count})\\s+of\\s+us`, 'i'));
+  const friends = lower.match(new RegExp(`(?:split|shared?|divided?)\\s+with\\s+(${count})\\s+(?:friends?|mates?)\\b`, 'i'));
+  const splitWith = lower.match(new RegExp(`(?:split|shared?|divided?)\\s+with\\s+(${count})\\s+(?:people|persons?|others?)\\b`, 'i'));
+  const splitWays = lower.match(new RegExp(`(?:split|divided?|shared?)\\s+(?:(?:equally|evenly)\\s+)?(?:by|between|among|across|\\/\\s*)(${count})\\s*(?:people|persons?|ways?|pax|heads)?\\b`, 'i'));
+  const splitEvenlyBeforeCount = lower.match(new RegExp(`(?:split|shared?|divided?)\\s+(?:equally|evenly)\\s+(${count})\\s+(?:people|persons?|ways?)\\b`, 'i'));
+  const standaloneWays = lower.match(new RegExp(`(?:split|divided?|shared?)\\s+(?:(?:equally|evenly)\\s+)?(${count})\\s+ways?\\b`, 'i'));
+  const standaloneBetween = lower.match(new RegExp(`\\b(?:between|among|by)\\s+(${count})\\s*(?:people|persons?|friends?|pax|heads)?\\b`, 'i'));
+  const explicitPeople = lower.match(new RegExp(`(${count})\\s+(?:people|persons?|pax|heads)\\b(?!\\s+(?:including|with)\\s+me)`, 'i'));
+  const friendsWithoutInclusion = lower.match(new RegExp(`(?:^|\\bwith\\s+)(${count})\\s+friends?\\b(?!\\s+(?:including|with)\\s+me)`, 'i'));
+  const standaloneFriends = lower.match(new RegExp(`(?:^|[,;]\\s*)(${count})\\s+friends?\\b(?!\\s+(?:including|with)\\s+me)`, 'i'));
+  const countBeforeSplit = lower.match(new RegExp(`^(${count})\\s+(?:people|persons?|friends?|pax|heads)\\b`, 'i'));
   const namedPeople = lower.match(/(?:^|[:;,])\s*(?:me|i)\s*(?:,|\band\b)\s*(.+?)\s+(?:had|paid|spent)\b/i);
   const solo = /\b(just me|only me|solo|for myself|myself only)\b/i.test(lower);
+  const firstCaptured = (match) => match ? Number(numberFromText(match[1] || match[2] || match[3])) : 0;
 
   if (solo) people = 1;
-  else if (countBeforeSplit) people = Number(countBeforeSplit[1]);
-  else if (ofUs) people = Number(ofUs[1]);
-  else if (peopleIncludingMe) people = Number(peopleIncludingMe[1]);
-  else if (includingMe) people = Number(includingMe[1]) + 1;
-  else if (splitWithFriends) people = Number(splitWithFriends[1]) + (lower.includes('friends') || lower.includes('people') || lower.includes('others') ? 1 : 0);
-  else if (splitWithShort) people = Number(splitWithShort[1]) + 1;
-  else if (splitWays) people = Number(splitWays[1]);
-  else if (nWays) people = Number(nWays[1]);
-  else if (totalPeople) people = Number(totalPeople[1]);
-  else if (splitBetweenNumber) people = Number(splitBetweenNumber[1]);
-  else if (standaloneBetweenNumber) people = Number(standaloneBetweenNumber[1]);
-  else if (splitEvenlyCount) people = Number(splitEvenlyCount[1]);
+  else if (othersIncludingMe) people = firstCaptured(othersIncludingMe) + 1;
+  else if (friendsIncludingMe) people = firstCaptured(friendsIncludingMe) + 1;
+  else if (peopleIncludingMe) people = firstCaptured(peopleIncludingMe);
+  else if (ofUs) people = firstCaptured(ofUs);
+  else if (splitWith) people = firstCaptured(splitWith) + 1;
+  else if (friends) people = firstCaptured(friends) + 1;
+  else if (friendsWithoutInclusion) people = firstCaptured(friendsWithoutInclusion) + 1;
+  else if (standaloneFriends) people = firstCaptured(standaloneFriends) + 1;
+  else if (countBeforeSplit) people = firstCaptured(countBeforeSplit);
+  else if (splitWays) people = firstCaptured(splitWays);
+  else if (splitEvenlyBeforeCount) people = firstCaptured(splitEvenlyBeforeCount);
+  else if (standaloneWays) people = firstCaptured(standaloneWays);
+  else if (standaloneBetween) people = firstCaptured(standaloneBetween);
+  else if (explicitPeople) people = firstCaptured(explicitPeople);
   else if (namedPeople) {
     const names = namedPeople[1].split(/\s*,\s*|\s+and\s+/i).filter((name) => name.trim());
     people = names.length + 1;
@@ -67,6 +83,7 @@ function parseExpenseLocally(sentence) {
     ['burger', 'burger'], ['coffee', 'coffee'], ['tea', 'tea'], ['chai', 'chai'],
     ['cab', 'cab'], ['taxi', 'taxi'], ['uber', 'uber'], ['shopping', 'shopping'],
     ['fuel', 'fuel'], ['petrol', 'petrol'], ['medicine', 'medicine'],
+    ['electronics', 'electronics'], ['electronic', 'electronics'],
   ];
   for (const [phrase, title] of knownItems) {
     if (lower.includes(phrase)) {
@@ -79,12 +96,11 @@ function parseExpenseLocally(sentence) {
     const cleaned = sentence
       .replace(/(?:₹|rs\.?|inr)\s*/gi, '')
       .replace(/\b\d[\d,]*(?:\.\d+)?\b/g, '')
-      .replace(/\b(?:split|sharing|shared|equally|evenly|between|among|across|with|people|persons?|friends?|others?|ways?|including|pax|heads|of|us|me|and|for|to|paid|cost|costs|amount|total|by|just|only|myself|solo|each)\b/gi, ' ')
+      .replace(/\b(?:split|sharing|shared|equally|evenly|between|among|across|with|people|persons?|friends?|others?|ways?|including|pax|heads|of|us|me|and|for|to|paid|cost|costs|amount|total|by|the|just|only|myself|solo|each)\b/gi, ' ')
       .replace(/[^\p{L}\p{N}\s-]/gu, ' ')
       .replace(/\s+/g, ' ')
       .trim();
-    description = cleaned.toLower || 'expense';
-    description = description.toLowerCase();
+    description = cleaned.toLowerCase() || 'expense';
   }
 
   return {

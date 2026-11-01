@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
 const inr = (n) => '₹' + Number(n || 0).toLocaleString('en-IN');
+const splitCacheKey = 'splitsmart.split-details';
 
 function getEmoji(description = '') {
   const text = String(description).toLowerCase();
@@ -33,7 +34,14 @@ export default function Home() {
   useEffect(() => {
     if (!session) { setExpenses([]); return; }
     supabase.from('expenses').select('*').order('created_at', { ascending: true })
-      .then(({ data }) => setExpenses(data || []));
+      .then(({ data }) => {
+        let splitDetails = {};
+        try { splitDetails = JSON.parse(localStorage.getItem(splitCacheKey) || '{}'); } catch {}
+        setExpenses((data || []).map((expense) => ({
+          ...expense,
+          ...(splitDetails[expense.id] || {}),
+        })));
+      });
   }, [session]);
 
   const signUp = async () => {
@@ -81,7 +89,13 @@ export default function Home() {
         error = fallback.error;
       }
       if (error) { alert('Save error: ' + error.message); return; }
-      setExpenses((list) => [...list, { ...rows[0], people, each }]);
+      const savedExpense = { ...rows[0], people, each };
+      try {
+        const splitDetails = JSON.parse(localStorage.getItem(splitCacheKey) || '{}');
+        splitDetails[rows[0].id] = { people, each };
+        localStorage.setItem(splitCacheKey, JSON.stringify(splitDetails));
+      } catch {}
+      setExpenses((list) => [...list, savedExpense]);
       setText('');
     } catch (e) { alert('Could not add: ' + e.message); }
     finally { setLoading(false); }

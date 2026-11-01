@@ -18,6 +18,9 @@ create table if not exists expenses (
   created_at timestamptz not null default now()
 );
 
+alter table expenses add column if not exists people integer not null default 1;
+alter table expenses add column if not exists "each" numeric not null default 0;
+
 -- Row-Level Security: each person can only see & change their OWN expenses.
 -- This is the one rule that makes a shared database safe for many users.
 alter table expenses enable row level security;

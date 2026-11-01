@@ -6,13 +6,25 @@ function parseExpenseLocally(sentence) {
     .map((match) => Number(match[1].replace(/,/g, '')))
     .filter(Number.isFinite);
 
-  const explicitAmount = lower.match(/(?:₹|rs\.?|inr)\s*(\d[\d,]*(?:\.\d+)?)|(?:for|cost(?:s)?|amount|total|of)\s+(₹|rs\.?|inr)?\s*(\d[\d,]*(?:\.\d+)?)/i);
-  const amount = explicitAmount
-    ? Number((explicitAmount[1] || explicitAmount[3] || 0).toString().replace(/,/g, ''))
-    : Math.max(...numbers.filter((number) => number > 10), 0);
+  const currencyAmount = lower.match(/(?:₹|rs\.?|inr)\s*(\d[\d,]*(?:\.\d+)?)/i);
+  const forAmount = lower.match(/(?:for|cost(?:s)?|amount|total)\s+(?:₹|rs\.?|inr)?\s*(\d[\d,]*(?:\.\d+)?)/i);
+  let amount = 0;
+  const rupeeNumber = sentence.match(/₹\s*([\d,]+(?:\.\d+)?)/);
+  if (rupeeNumber?.[1]) {
+    amount = Number(rupeeNumber[1].replace(/,/g, ''));
+  } else if (/(?:₹|rs\.?|inr)/i.test(lower)) {
+    amount = Math.max(...numbers.filter((number) => number > 10), 0);
+  } else if (currencyAmount?.[1]) {
+    amount = Number(currencyAmount[1].replace(/,/g, ''));
+  } else if (forAmount?.[1] && !/^(₹|rs|inr)/i.test(lower.trim())) {
+    amount = Number(forAmount[1].replace(/,/g, ''));
+  } else {
+    amount = Math.max(...numbers.filter((number) => number > 10), 0);
+  }
 
   let people = 1;
   const ofUs = lower.match(/(\d+)\s+(?:of\s+us|people(?:\s+(?:including|with))?\s+me)/i);
+  const peopleIncludingMe = lower.match(/(\d+)\s+people\s+(?:including|with)\s+me/i);
   const includingMe = lower.match(/(\d+)\s+(?:others?|friends?|people|persons?)\s+(?:including|with)\s+me/i);
   const splitWithFriends = lower.match(/(?:split|shared?)\s+with\s+(\d+)\s+(?:friends?|people|persons?|others?)?/i);
   const splitWithShort = lower.match(/(\d+)\s+(?:friends?|people|persons?)\s+(?:split|sharing)/i);
@@ -21,11 +33,15 @@ function parseExpenseLocally(sentence) {
   const totalPeople = lower.match(/(?:for|between|among)\s+(\d+)\s+(?:people|persons?|friends?|pax|heads)\s*(?:including\s+me)?/i);
   const splitBetweenNumber = lower.match(/(?:split|divided?|shared?)\s+(?:equally\s+)?(?:between|among)\s+(\d+)(?:\s+(?:people|persons?|friends?|pax|heads))?/i);
   const standaloneBetweenNumber = lower.match(/\b(?:between|among)\s+(\d+)(?:\s+(?:people|persons?|friends?|pax|heads))?(?:\s|$)/i);
+  const splitEvenlyCount = lower.match(/(?:split|divide|divided|shared?)\s+(?:equally\s+|evenly\s+)?(?:by\s+|between\s+|among\s+)?(\d+)(?:\s+(?:people|persons?|friends?|ways?|pax|heads))?/i);
+  const countBeforeSplit = lower.match(/^(\d+)\s+(?:people|persons?|friends?|pax|heads)\b/i);
   const namedPeople = lower.match(/(?:^|[:;,])\s*(?:me|i)\s*(?:,|\band\b)\s*(.+?)\s+(?:had|paid|spent)\b/i);
   const solo = /\b(just me|only me|solo|for myself|myself only)\b/i.test(lower);
 
   if (solo) people = 1;
+  else if (countBeforeSplit) people = Number(countBeforeSplit[1]);
   else if (ofUs) people = Number(ofUs[1]);
+  else if (peopleIncludingMe) people = Number(peopleIncludingMe[1]);
   else if (includingMe) people = Number(includingMe[1]) + 1;
   else if (splitWithFriends) people = Number(splitWithFriends[1]) + (lower.includes('friends') || lower.includes('people') || lower.includes('others') ? 1 : 0);
   else if (splitWithShort) people = Number(splitWithShort[1]) + 1;
@@ -34,6 +50,7 @@ function parseExpenseLocally(sentence) {
   else if (totalPeople) people = Number(totalPeople[1]);
   else if (splitBetweenNumber) people = Number(splitBetweenNumber[1]);
   else if (standaloneBetweenNumber) people = Number(standaloneBetweenNumber[1]);
+  else if (splitEvenlyCount) people = Number(splitEvenlyCount[1]);
   else if (namedPeople) {
     const names = namedPeople[1].split(/\s*,\s*|\s+and\s+/i).filter((name) => name.trim());
     people = names.length + 1;
@@ -62,7 +79,7 @@ function parseExpenseLocally(sentence) {
     const cleaned = sentence
       .replace(/(?:₹|rs\.?|inr)\s*/gi, '')
       .replace(/\b\d[\d,]*(?:\.\d+)?\b/g, '')
-      .replace(/\b(?:split|sharing|shared|equally|between|among|across|with|people|persons?|friends?|others?|ways?|including|pax|heads|of|us|me|and|for|to|paid|cost|costs|amount|total|by|just|only|myself|solo)\b/gi, ' ')
+      .replace(/\b(?:split|sharing|shared|equally|evenly|between|among|across|with|people|persons?|friends?|others?|ways?|including|pax|heads|of|us|me|and|for|to|paid|cost|costs|amount|total|by|just|only|myself|solo|each)\b/gi, ' ')
       .replace(/[^\p{L}\p{N}\s-]/gu, ' ')
       .replace(/\s+/g, ' ')
       .trim();
@@ -75,7 +92,7 @@ function parseExpenseLocally(sentence) {
     people,
     each: people > 0 ? Number((amount / people).toFixed(2)) : amount,
     description,
-    confidence: amount > 0 && description !== 'expense' ? 1 : 0,
+    confidence: amount > 0 ? 1 : 0,
   };
 }
 

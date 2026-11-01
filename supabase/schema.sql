@@ -18,8 +18,21 @@ create table if not exists expenses (
   created_at timestamptz not null default now()
 );
 
-alter table expenses add column if not exists people integer not null default 1;
-alter table expenses add column if not exists "each" numeric not null default 0;
+alter table public.expenses add column if not exists people integer;
+alter table public.expenses add column if not exists "each" numeric;
+
+update public.expenses
+set
+  people = coalesce(people, 1),
+  "each" = coalesce("each", amount)
+where people is null or "each" is null;
+
+alter table public.expenses alter column people set default 1;
+alter table public.expenses alter column people set not null;
+alter table public.expenses alter column "each" set default 0;
+alter table public.expenses alter column "each" set not null;
+
+notify pgrst, 'reload schema';
 
 -- Row-Level Security: each person can only see & change their OWN expenses.
 -- This is the one rule that makes a shared database safe for many users.

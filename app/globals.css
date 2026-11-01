@@ -1,8 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 :root {
-  --blue: #5865F2; /* Discord blurple */
-  --cyan: #26C6FF;
+  --blue: #15803d;
+  --cyan: #22c55e;
   --ink: #f2f3f5; /* Discord crisp white/light text */
   --muted: #949ba4; /* Discord subtle secondary text */
   --line: #383a40; /* Discord clean border */

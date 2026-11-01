@@ -9,6 +9,7 @@ const splitCacheKey = 'splitsmart.split-details';
 function getEmoji(description = '') {
   const text = String(description).toLowerCase();
   if (text.includes('dinner') || text.includes('lunch') || text.includes('food')) return '🍽️';
+  if (text.includes('pizza') || text.includes('burger') || text.includes('meal')) return '🍽️';
   if (text.includes('cab') || text.includes('taxi') || text.includes('uber')) return '🚕';
   if (text.includes('coffee') || text.includes('tea') || text.includes('chai')) return '☕';
   if (text.includes('grocer') || text.includes('market')) return '🛒';
@@ -183,13 +184,13 @@ const styles = {
   addBtn: { flex: 'none', width: 48, borderRadius: 14, border: 'none', color: '#fff', fontSize: 24, fontWeight: 700, background: 'linear-gradient(135deg, var(--blue), var(--cyan))', cursor: 'pointer' },
   list: { display: 'flex', flexDirection: 'column', gap: 10, minHeight: 60 },
   empty: { color: 'var(--muted)', fontSize: 14, textAlign: 'center', padding: '24px 0' },
-  item: { display: 'flex', alignItems: 'center', gap: 12, background: '#f7f9fc', border: '1px solid var(--line)', borderRadius: 16, padding: '12px 14px' },
+  item: { display: 'flex', alignItems: 'center', gap: 12, minHeight: 68, background: '#f7f9fc', border: '1px solid var(--line)', borderRadius: 16, padding: '12px 14px' },
   itemEmoji: { width: 38, height: 38, borderRadius: 11, display: 'grid', placeItems: 'center', background: '#fff', border: '1px solid var(--line)', fontSize: 19, flex: 'none' },
   itemMain: { flex: 1, minWidth: 0 },
-  itemName: { color: '#111827', fontWeight: 700, fontSize: 15 },
+  itemName: { color: '#111827', fontWeight: 700, fontSize: 16, lineHeight: 1.15, textTransform: 'capitalize' },
   itemPaid: { color: 'var(--muted)', fontSize: 12.5, marginTop: 1 },
-  itemSplit: { color: '#15803d', fontSize: 12.5, fontWeight: 700, marginTop: 3 },
-  itemAmount: { color: '#111827', fontWeight: 800, fontSize: 15.5 },
+  itemSplit: { color: '#6b7280', fontSize: 13, fontWeight: 600, marginTop: 4 },
+  itemAmount: { color: '#111827', fontWeight: 800, fontSize: 16, whiteSpace: 'nowrap' },
   remove: { flex: 'none', width: 26, height: 26, borderRadius: 8, border: 'none', background: 'transparent', color: 'var(--muted)', fontSize: 20, cursor: 'pointer' },
   total: { textAlign: 'center', marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--line)', fontWeight: 800, fontSize: 16 },
 };

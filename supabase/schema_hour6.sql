@@ -64,6 +64,10 @@ begin
   return gid;
 end; $$;
 
+grant execute on function join_group(text) to authenticated;
+grant execute on function create_group(text) to authenticated;
+notify pgrst, 'reload schema';
+
 -- turn on Row-Level Security, then the rules (safe to re-run)
 alter table groups        enable row level security;
 alter table group_members enable row level security;

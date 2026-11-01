@@ -19,6 +19,8 @@ function getEmoji(description = '') {
 export default function Home() {
   const [session, setSession] = useState(null);
   const [checking, setChecking] = useState(true);
+  const [groups, setGroups] = useState([]);
+  const [groupId, setGroupId] = useState('');
   const [expenses, setExpenses] = useState([]);
   const [text, setText] = useState('');
   const [email, setEmail] = useState('');
@@ -34,7 +36,9 @@ export default function Home() {
 
   useEffect(() => {
     if (!session) { setExpenses([]); return; }
-    supabase.from('expenses').select('*').order('created_at', { ascending: true })
+    let query = supabase.from('expenses').select('*');
+    query = groupId ? query.eq('group_id', groupId) : query.is('group_id', null);
+    query.order('created_at', { ascending: true })
       .then(({ data }) => {
         let splitDetails = {};
         try { splitDetails = JSON.parse(localStorage.getItem(splitCacheKey) || '{}'); } catch {}
@@ -43,6 +47,24 @@ export default function Home() {
           ...(splitDetails[expense.id] || {}),
         })));
       });
+  }, [session, groupId]);
+
+  const loadGroups = async () => {
+    const { data } = await supabase.from('groups').select('*').order('created_at');
+    const loadedGroups = data || [];
+    setGroups(loadedGroups);
+    setGroupId((current) => loadedGroups.some((group) => group.id === current)
+      ? current
+      : '');
+  };
+
+  useEffect(() => {
+    if (!session) {
+      setGroups([]);
+      setGroupId('');
+      return;
+    }
+    loadGroups();
   }, [session]);
 
   const signUp = async () => {
@@ -56,6 +78,24 @@ export default function Home() {
     if (error) setAuthMsg(error.message);
   };
   const signOut = () => supabase.auth.signOut();
+
+  const createGroup = async () => {
+    const name = window.prompt('Name your group (e.g. Goa Trip):');
+    if (!name?.trim()) return;
+    const { data, error } = await supabase.rpc('create_group', { name: name.trim() });
+    if (error) { alert('Group error: ' + error.message); return; }
+    await loadGroups();
+    setGroupId(data);
+  };
+
+  const joinGroup = async () => {
+    const code = window.prompt('Enter the group code:');
+    if (!code?.trim()) return;
+    const { data, error } = await supabase.rpc('join_group', { code: code.trim() });
+    if (error) { alert('Group error: ' + error.message); return; }
+    await loadGroups();
+    setGroupId(data);
+  };
 
   const total = expenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
 
@@ -78,6 +118,7 @@ export default function Home() {
         paid_by: 'You',
         amount: data.amount || 0,
         emoji: getEmoji(data.description),
+        ...(groupId ? { group_id: groupId } : {}),
       };
       let { data: rows, error } = await supabase.from('expenses')
         .insert({ ...baseExpense, people, each })
@@ -135,6 +176,24 @@ export default function Home() {
           <div style={styles.brand}><div style={styles.logo}>S</div><div style={styles.title}>Splitly</div></div>
           <button style={styles.signout} onClick={signOut}>Sign out</button>
         </div>
+        <div style={styles.groupBar}>
+          <select
+            style={styles.groupSelect}
+            value={groupId}
+            onChange={(event) => setGroupId(event.target.value)}
+            aria-label="Expense view"
+          >
+            <option value="">Personal expenses</option>
+            {groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
+          </select>
+          <button style={styles.groupButton} onClick={createGroup}>Create</button>
+          <button style={styles.groupButton} onClick={joinGroup}>Join</button>
+        </div>
+        {groupId && groups.find((group) => group.id === groupId)?.join_code && (
+          <div style={styles.inviteCode}>
+            Invite code: <strong>{groups.find((group) => group.id === groupId).join_code}</strong>
+          </div>
+        )}
         <div style={styles.addRow}>
           <input style={styles.input} value={text} onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addExpense()}
@@ -176,6 +235,10 @@ const styles = {
   logo: { width: 36, height: 36, borderRadius: 11, display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: 18, background: 'linear-gradient(135deg, var(--blue), var(--cyan))' },
   title: { fontSize: 20, fontWeight: 800 },
   signout: { border: '1px solid var(--line)', background: '#fff', borderRadius: 10, padding: '7px 13px', fontSize: 13, fontWeight: 700, color: 'var(--muted)', cursor: 'pointer' },
+  groupBar: { display: 'flex', gap: 8, marginBottom: 10 },
+  groupSelect: { flex: 1, minWidth: 0, border: '1px solid var(--line)', borderRadius: 10, padding: '9px 10px', background: '#f7f9fc', color: '#111827', fontWeight: 700 },
+  groupButton: { border: '1px solid var(--line)', borderRadius: 10, padding: '9px 10px', background: '#fff', color: '#15803d', fontWeight: 800 },
+  inviteCode: { color: 'var(--muted)', fontSize: 12, textAlign: 'center', marginBottom: 12 },
   addRow: { display: 'flex', gap: 10, marginBottom: 16 },
   input: { flex: 1, border: '1px solid var(--line)', borderRadius: 14, padding: '13px 15px', fontSize: 15, outline: 'none', background: '#f7f9fc', color: '#111827' },
   input2: { width: '100%', border: '1px solid var(--line)', borderRadius: 12, padding: '12px 14px', fontSize: 15, outline: 'none', background: '#f7f9fc', color: '#111827', marginBottom: 10, boxSizing: 'border-box' },

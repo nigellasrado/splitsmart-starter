@@ -49,6 +49,21 @@ begin
   return gid;
 end; $$;
 
+-- Create the group and its owner membership together so group creation is not
+-- blocked by the groups SELECT policy before membership exists.
+create or replace function create_group(name text)
+returns uuid language plpgsql security definer
+set search_path = public as $$
+declare gid uuid;
+begin
+  insert into groups (name, created_by)
+  values (trim(name), auth.uid())
+  returning id into gid;
+  insert into group_members (group_id, user_id)
+  values (gid, auth.uid());
+  return gid;
+end; $$;
+
 -- turn on Row-Level Security, then the rules (safe to re-run)
 alter table groups        enable row level security;
 alter table group_members enable row level security;
@@ -61,6 +76,9 @@ drop policy if exists "join groups"           on group_members;
 drop policy if exists "see group expenses"    on expenses;
 drop policy if exists "add group expenses"    on expenses;
 drop policy if exists "delete group expenses" on expenses;
+drop policy if exists "read own personal expenses" on expenses;
+drop policy if exists "add own personal expenses" on expenses;
+drop policy if exists "delete own personal expenses" on expenses;
 
 create policy "see my groups"      on groups for select using (is_group_member(id));
 create policy "create groups"      on groups for insert with check (auth.uid() = created_by);
@@ -71,3 +89,11 @@ create policy "join groups"        on group_members for insert with check (user_
 create policy "see group expenses"    on expenses for select using (is_group_member(group_id));
 create policy "add group expenses"    on expenses for insert with check (is_group_member(group_id));
 create policy "delete group expenses" on expenses for delete using (is_group_member(group_id));
+
+-- Keep personal expenses compatible with the shared group policies above.
+create policy "read own personal expenses" on expenses for select
+  using (group_id is null and auth.uid() = user_id);
+create policy "add own personal expenses" on expenses for insert
+  with check (group_id is null and auth.uid() = user_id);
+create policy "delete own personal expenses" on expenses for delete
+  using (group_id is null and auth.uid() = user_id);

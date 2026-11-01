@@ -71,7 +71,7 @@ export default function Home() {
       <main style={styles.page}>
         <div style={styles.card}>
           <div style={styles.header}><div style={styles.brand}><div style={styles.logo}>S</div><div style={styles.title}>Splitly</div></div></div>
-          <p style={{ color: '#6b7280', fontSize: 14, marginBottom: 16 }}>Sign in to see your expenses on any device.</p>
+          <p style={{ color: '#f2f3f5', fontSize: 14, marginBottom: 16 }}>Sign in to see your expenses on any device.</p>
           <input style={styles.input2} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
           <input style={styles.input2} type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password (6+ characters)" />
           <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
@@ -123,7 +123,7 @@ const styles = {
   brand: { display: 'flex', alignItems: 'center', gap: 10 },
   logo: { width: 36, height: 36, borderRadius: 11, display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: 18, background: 'linear-gradient(135deg, var(--blue), var(--cyan))' },
   title: { fontSize: 20, fontWeight: 800 },
-  signout: { border: '1px solid var(--line)', background: '#fff', borderRadius: 10, padding: '7px 13px', fontSize: 13, fontWeight: 700, color: 'var(--muted)', cursor: 'pointer' },
+  signout: { border: '1px solid var(--line)', background: '#fff', borderRadius: 10, padding: '7px 13px', fontSize: 13, fontWeight: 700, color: '#111827', cursor: 'pointer' },
   addRow: { display: 'flex', gap: 10, marginBottom: 16 },
   input: { flex: 1, border: '1px solid var(--line)', borderRadius: 14, padding: '13px 15px', fontSize: 15, outline: 'none', background: '#f7f9fc', color: '#111827' },
   input2: { width: '100%', border: '1px solid var(--line)', borderRadius: 12, padding: '12px 14px', fontSize: 15, outline: 'none', background: '#f7f9fc', color: '#111827', marginBottom: 10, boxSizing: 'border-box' },
@@ -135,9 +135,9 @@ const styles = {
   item: { display: 'flex', alignItems: 'center', gap: 12, background: '#f7f9fc', border: '1px solid var(--line)', borderRadius: 16, padding: '12px 14px' },
   itemEmoji: { width: 38, height: 38, borderRadius: 11, display: 'grid', placeItems: 'center', background: '#fff', border: '1px solid var(--line)', fontSize: 19, flex: 'none' },
   itemMain: { flex: 1, minWidth: 0 },
-  itemName: { fontWeight: 700, fontSize: 15 },
-  itemPaid: { color: 'var(--muted)', fontSize: 12.5, marginTop: 1 },
-  itemAmount: { fontWeight: 800, fontSize: 15.5 },
-  remove: { flex: 'none', width: 26, height: 26, borderRadius: 8, border: 'none', background: 'transparent', color: 'var(--muted)', fontSize: 20, cursor: 'pointer' },
+  itemName: { color: '#111827', fontWeight: 700, fontSize: 15 },
+  itemPaid: { color: '#4b5563', fontSize: 12.5, marginTop: 1 },
+  itemAmount: { color: '#111827', fontWeight: 800, fontSize: 15.5 },
+  remove: { flex: 'none', width: 26, height: 26, borderRadius: 8, border: 'none', background: 'transparent', color: '#4b5563', fontSize: 20, cursor: 'pointer' },
   total: { textAlign: 'center', marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--line)', fontWeight: 800, fontSize: 16 },
 };

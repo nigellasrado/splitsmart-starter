@@ -5,6 +5,15 @@ import { supabase } from '../lib/supabaseClient';
 
 const inr = (n) => '₹' + Number(n || 0).toLocaleString('en-IN');
 
+function getEmoji(description = '') {
+  const text = String(description).toLowerCase();
+  if (text.includes('dinner') || text.includes('lunch') || text.includes('food')) return '🍽️';
+  if (text.includes('cab') || text.includes('taxi') || text.includes('uber')) return '🚕';
+  if (text.includes('coffee') || text.includes('tea') || text.includes('chai')) return '☕';
+  if (text.includes('grocer') || text.includes('market')) return '🛒';
+  return '🧾';
+}
+
 export default function Home() {
   const [session, setSession] = useState(null);
   const [checking, setChecking] = useState(true);
@@ -13,6 +22,7 @@ export default function Home() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authMsg, setAuthMsg] = useState('');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => { setSession(data.session); setChecking(false); });
@@ -42,7 +52,8 @@ export default function Home() {
 
   const addExpense = async () => {
     const t = text.trim();
-    if (!t) return;
+    if (!t || loading) return;
+    setLoading(true);
     try {
       const res = await fetch('/api/split', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -62,7 +73,7 @@ export default function Home() {
         .insert({ ...baseExpense, people, each })
         .select();
 
-      if (error && /column .*(?:people|each).*schema cache/i.test(error.message)) {
+      if (error && /(?:people|each).*(?:column|schema cache)|column.*(?:people|each)/i.test(error.message)) {
         const fallback = await supabase.from('expenses')
           .insert(baseExpense)
           .select();
@@ -73,6 +84,7 @@ export default function Home() {
       setExpenses((list) => [...list, { ...rows[0], people, each }]);
       setText('');
     } catch (e) { alert('Could not add: ' + e.message); }
+    finally { setLoading(false); }
   };
 
   const removeExpense = async (id) => {
@@ -109,22 +121,25 @@ export default function Home() {
         </div>
         <div style={styles.addRow}>
           <input style={styles.input} value={text} onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && addExpense()} placeholder="Add an expense…" />
-          <button style={styles.addBtn} onClick={addExpense}>+</button>
+            onKeyDown={(e) => e.key === 'Enter' && addExpense()}
+            placeholder={loading ? 'Splitting with AI…' : 'Add an expense…'}
+            disabled={loading} />
+          <button style={{ ...styles.addBtn, opacity: loading ? 0.7 : 1 }} onClick={addExpense} disabled={loading}>
+            {loading ? '…' : '+'}
+          </button>
         </div>
         <div style={styles.list}>
           {expenses.length === 0 && <div style={styles.empty}>No expenses yet — add your first one above.</div>}
           {expenses.map((e) => (
             <div key={e.id} style={styles.item}>
-              <div style={styles.itemEmoji}>{e.emoji || '🧾'}</div>
+              <div style={styles.itemEmoji}>{e.emoji || getEmoji(e.name)}</div>
               <div style={styles.itemMain}>
                 <div style={styles.itemName}>{e.name}</div>
-                <div style={styles.itemPaid}>paid by {e.paid_by}</div>
-                {Number(e.people || 1) > 1 && (
+                {e.people !== undefined && e.people !== null ? (
                   <div style={styles.itemSplit}>
                     {Number(e.people)} people · {inr(e.each || (Number(e.amount || 0) / Number(e.people || 1)))} each
                   </div>
-                )}
+                ) : <div style={styles.itemPaid}>paid by {e.paid_by}</div>}
               </div>
               <div style={styles.itemAmount}>{inr(e.amount)}</div>
               <button style={styles.remove} onClick={() => removeExpense(e.id)}>×</button>

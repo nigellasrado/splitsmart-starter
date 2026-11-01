@@ -1,4 +1,3 @@
-import { GoogleGenAI } from '@google/genai';
 import { NextResponse } from 'next/server';
 
 export async function POST(request) {
@@ -20,8 +19,6 @@ export async function POST(request) {
         { status: 500 }
       );
     }
-
-    const ai = new GoogleGenAI({ apiKey });
 
     const prompt = `You are an expert expense-splitting calculator for natural human sentences.
 Analyze the user's sentence and extract the expense split.
@@ -59,15 +56,28 @@ Return ONLY a strict JSON object with keys: "amount", "people", "each", "descrip
     let parsed = null;
 
     try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-flash-latest',
-        contents: prompt,
-        config: {
-          responseMimeType: 'application/json',
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${encodeURIComponent(apiKey)}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { responseMimeType: 'application/json' },
+          }),
+          signal: controller.signal,
         },
-      });
+      );
+      clearTimeout(timeout);
 
-      const responseText = response.text || '';
+      if (!response.ok) {
+        throw new Error(`Gemini request failed with status ${response.status}`);
+      }
+
+      const result = await response.json();
+      const responseText = result.candidates?.[0]?.content?.parts?.[0]?.text || '';
       // Strip any ``` fences before JSON.parse
       const cleaned = responseText.replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
       parsed = JSON.parse(cleaned);

@@ -31,6 +31,9 @@ Rules for counting "people":
 - "divided [equally] by N": total of N people.
 - List of names/people: count each person mentioned (e.g. "me, raj and priya" = 3 people: me + raj + priya).
 - "split with N friends / people": means the speaker plus N friends (e.g. "split with 2 friends" = 1 + 2 = 3 people).
+- "N of us" / "N people including me": is the total group, including the speaker (e.g. "4 of us" = 4 people; "3 people including me" = 3 people).
+- "N others including me": means N other people plus the speaker (e.g. "3 others including me" = 4 people).
+- When a sentence gives an expense split as "N of us" or says an expense is shared with other people, include the speaker in the total. "3 of us" means 3 people total, not 3 other people.
 - "just me / solo / for myself / only me": 1 person.
 - If no count or group is mentioned, default "people" to 1.
 
@@ -45,6 +48,7 @@ Examples:
 - "me, raj and priya had dinner for 1200" -> {"amount": 1200, "people": 3, "each": 400, "description": "dinner"}
 - "900 cab, split with 2 friends" -> {"amount": 900, "people": 3, "each": 300, "description": "cab"}
 - "coffee 300, just me" -> {"amount": 300, "people": 1, "each": 300, "description": "coffee"}
+- "1500 for groceries, 4 of us" -> {"amount": 1500, "people": 4, "each": 375, "description": "groceries"}
 
 Now analyze this sentence:
 "${sentence}"
@@ -88,6 +92,9 @@ Return ONLY a strict JSON object with keys: "amount", "people", "each", "descrip
       const splitWaysMatch = lower.match(/(?:split|divide|divided)\s+(?:equally\s+)?(?:by|between|among|across|\/)\s*(\d+)/i);
       const nWaysMatch = lower.match(/(?:split|divide|divided)\s+(\d+)\s*ways/i);
       const forNPeopleMatch = lower.match(/(?:for|between|among)\s+(\d+)\s+(?:people|persons|friends|pax|heads)/i);
+      const ofUsMatch = lower.match(/(\d+)\s+of\s+us/i);
+      const othersIncludingMeMatch = lower.match(/(\d+)\s+others?\s+(?:including|with)\s+me/i);
+      const includingMeMatch = lower.match(/(\d+)\s+(?:people|persons)\s+(?:including|with)\s+me/i);
 
       if (splitWithMatch && Number(splitWithMatch[1]) > 0) {
         people = 1 + Number(splitWithMatch[1]); // me + N friends
@@ -97,6 +104,12 @@ Return ONLY a strict JSON object with keys: "amount", "people", "each", "descrip
         people = Number(nWaysMatch[1]);
       } else if (forNPeopleMatch && Number(forNPeopleMatch[1]) > 0) {
         people = Number(forNPeopleMatch[1]);
+      } else if (ofUsMatch && Number(ofUsMatch[1]) > 0) {
+        people = Number(ofUsMatch[1]);
+      } else if (othersIncludingMeMatch && Number(othersIncludingMeMatch[1]) > 0) {
+        people = 1 + Number(othersIncludingMeMatch[1]);
+      } else if (includingMeMatch && Number(includingMeMatch[1]) > 0) {
+        people = Number(includingMeMatch[1]);
       } else if (lower.includes('just me') || lower.includes('only me') || lower.includes('solo') || lower.includes('myself')) {
         people = 1;
       } else if (lower.includes('me') && (lower.includes('and') || lower.includes(','))) {
@@ -112,6 +125,7 @@ Return ONLY a strict JSON object with keys: "amount", "people", "each", "descrip
       else if (lower.includes('coffee') || lower.includes('tea') || lower.includes('chai')) description = 'coffee';
       else if (lower.includes('lunch')) description = 'lunch';
       else if (lower.includes('pizza') || lower.includes('burger')) description = 'food';
+      else if (lower.includes('grocer')) description = 'groceries';
       else {
         description = sentence
           .replace(/(\d[\d,]*(\.\d+)?)/g, '')

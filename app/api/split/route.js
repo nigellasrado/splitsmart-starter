@@ -42,6 +42,7 @@ Rules for fields:
 - "people": Total count of people sharing the cost (integer, minimum 1).
 - "each": amount divided by people (number, rounded to 2 decimal places).
 - "description": Concise lowercase title (e.g. "dinner", "cab", "coffee").
+- Preserve the expense name when the sentence contains one. Do not replace specific items with generic categories (e.g. "pizza" stays "pizza", "movie" stays "movie", and "burger" stays "burger").
 
 Examples:
 - "dinner 4000 split equally by 3" -> {"amount": 4000, "people": 3, "each": 1333.33, "description": "dinner"}
@@ -130,9 +131,14 @@ Return ONLY a strict JSON object with keys: "amount", "people", "each", "descrip
       else {
         description = sentence
           .replace(/(\d[\d,]*(\.\d+)?)/g, '')
-          .replace(/\b(?:split|equally|between|among|across|with|people|friends|paid|had|for|by|just|me|only|and)\b/gi, '')
+          .replace(/\b(?:split|equally|between|among|across|with|people|persons|friends|paid|had|for|by|just|me|only|and|of|us|ways?|each|rupees?|amount|cost)\b/gi, '')
           .replace(/\s+/g, ' ')
           .trim() || 'expense';
+
+        const descriptionWords = description
+          .replace(/[^\p{L}\p{N}\s-]/gu, '')
+          .trim();
+        description = descriptionWords || 'expense';
       }
 
       const each = people > 0 ? Number((amount / people).toFixed(2)) : amount;

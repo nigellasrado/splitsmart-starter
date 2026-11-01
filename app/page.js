@@ -76,6 +76,7 @@ export default function Home() {
         name: data.description || t,
         paid_by: 'You',
         amount: data.amount || 0,
+        emoji: getEmoji(data.description),
       };
       let { data: rows, error } = await supabase.from('expenses')
         .insert({ ...baseExpense, people, each })
@@ -185,10 +186,10 @@ const styles = {
   item: { display: 'flex', alignItems: 'center', gap: 12, background: '#f7f9fc', border: '1px solid var(--line)', borderRadius: 16, padding: '12px 14px' },
   itemEmoji: { width: 38, height: 38, borderRadius: 11, display: 'grid', placeItems: 'center', background: '#fff', border: '1px solid var(--line)', fontSize: 19, flex: 'none' },
   itemMain: { flex: 1, minWidth: 0 },
-  itemName: { fontWeight: 700, fontSize: 15 },
+  itemName: { color: '#111827', fontWeight: 700, fontSize: 15 },
   itemPaid: { color: 'var(--muted)', fontSize: 12.5, marginTop: 1 },
   itemSplit: { color: '#15803d', fontSize: 12.5, fontWeight: 700, marginTop: 3 },
-  itemAmount: { fontWeight: 800, fontSize: 15.5 },
+  itemAmount: { color: '#111827', fontWeight: 800, fontSize: 15.5 },
   remove: { flex: 'none', width: 26, height: 26, borderRadius: 8, border: 'none', background: 'transparent', color: 'var(--muted)', fontSize: 20, cursor: 'pointer' },
   total: { textAlign: 'center', marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--line)', fontWeight: 800, fontSize: 16 },
 };

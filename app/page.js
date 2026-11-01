@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabaseClient';
 
 const inr = (n) => '₹' + Number(n || 0).toLocaleString('en-IN');
 const splitCacheKey = 'splitsmart.split-details';
+const groupSelectionKey = 'splitsmart.selected-group';
 
 function getEmoji(description = '') {
   const text = String(description).toLowerCase();
@@ -36,26 +37,41 @@ export default function Home() {
 
   useEffect(() => {
     if (!session) { setExpenses([]); return; }
-    let query = supabase.from('expenses').select('*');
-    query = groupId ? query.eq('group_id', groupId) : query.is('group_id', null);
-    query.order('created_at', { ascending: true })
-      .then(({ data }) => {
+    let cancelled = false;
+    const loadExpenses = async () => {
+      let query = supabase.from('expenses').select('*');
+      query = groupId ? query.eq('group_id', groupId) : query.is('group_id', null);
+      const { data, error } = await query.order('created_at', { ascending: true });
+      if (!cancelled && !error) {
         let splitDetails = {};
         try { splitDetails = JSON.parse(localStorage.getItem(splitCacheKey) || '{}'); } catch {}
         setExpenses((data || []).map((expense) => ({
           ...expense,
           ...(splitDetails[expense.id] || {}),
         })));
-      });
+      }
+      if (error) console.error('Could not load expenses:', error.message);
+    };
+    loadExpenses();
+    const refresh = window.setInterval(loadExpenses, 10000);
+    window.addEventListener('focus', loadExpenses);
+    return () => {
+      cancelled = true;
+      window.clearInterval(refresh);
+      window.removeEventListener('focus', loadExpenses);
+    };
   }, [session, groupId]);
 
   const loadGroups = async () => {
     const { data } = await supabase.from('groups').select('*').order('created_at');
     const loadedGroups = data || [];
     setGroups(loadedGroups);
-    setGroupId((current) => loadedGroups.some((group) => group.id === current)
-      ? current
-      : '');
+    setGroupId((current) => {
+      const remembered = localStorage.getItem(groupSelectionKey);
+      if (loadedGroups.some((group) => group.id === current)) return current;
+      if (loadedGroups.some((group) => group.id === remembered)) return remembered;
+      return '';
+    });
   };
 
   useEffect(() => {
@@ -86,6 +102,7 @@ export default function Home() {
     if (error) { alert('Group error: ' + error.message); return; }
     await loadGroups();
     setGroupId(data);
+    localStorage.setItem(groupSelectionKey, data);
   };
 
   const joinGroup = async () => {
@@ -95,6 +112,7 @@ export default function Home() {
     if (error) { alert('Group error: ' + error.message); return; }
     await loadGroups();
     setGroupId(data);
+    localStorage.setItem(groupSelectionKey, data);
   };
 
   const total = expenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
@@ -180,7 +198,11 @@ export default function Home() {
           <select
             style={styles.groupSelect}
             value={groupId}
-            onChange={(event) => setGroupId(event.target.value)}
+            onChange={(event) => {
+              setGroupId(event.target.value);
+              if (event.target.value) localStorage.setItem(groupSelectionKey, event.target.value);
+              else localStorage.removeItem(groupSelectionKey);
+            }}
             aria-label="Expense view"
           >
             <option value="">Personal expenses</option>

@@ -50,18 +50,27 @@ export default function Home() {
       });
       const data = await res.json();
       if (data.error) { alert('AI error: ' + data.error); return; }
-      const { data: rows, error } = await supabase.from('expenses')
-        .insert({
-          user_id: session.user.id,
-          name: data.description || t,
-          paid_by: 'You',
-          amount: data.amount || 0,
-          people: Number(data.people || 1),
-          each: Number(data.each || data.amount || 0),
-        })
+      const people = Math.max(1, Number(data.people || 1));
+      const each = Number(data.each ?? (people > 0 ? data.amount / people : data.amount || 0));
+      const baseExpense = {
+        user_id: session.user.id,
+        name: data.description || t,
+        paid_by: 'You',
+        amount: data.amount || 0,
+      };
+      let { data: rows, error } = await supabase.from('expenses')
+        .insert({ ...baseExpense, people, each })
         .select();
+
+      if (error && /column .*(?:people|each).*schema cache/i.test(error.message)) {
+        const fallback = await supabase.from('expenses')
+          .insert(baseExpense)
+          .select();
+        rows = fallback.data;
+        error = fallback.error;
+      }
       if (error) { alert('Save error: ' + error.message); return; }
-      setExpenses((list) => [...list, rows[0]]);
+      setExpenses((list) => [...list, { ...rows[0], people, each }]);
       setText('');
     } catch (e) { alert('Could not add: ' + e.message); }
   };
